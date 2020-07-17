@@ -151,7 +151,7 @@ def get_build_secret_names(build_num):
         for job, step in enumerate(build_details['steps']):
             if 'actions' in step and len(step['actions']) > 0:
                 for a, action in enumerate(step['actions']):
-                    if 'name' in action and action['name'] == 'Preparing Environment Variables':
+                    if 'name' in action and action['name'] and 'preparing environment variables' in action['name'].lower():
                         if verbose:
                             print('Found "Preparing Environment Variables" job')
                         found_prepare_env_var_action = True
@@ -168,7 +168,7 @@ def get_build_secret_names(build_num):
             for job, step in enumerate(build_details['steps']):
                 if 'actions' in step and len(step['actions']) > 0:
                     for a, action in enumerate(step['actions']):
-                        if 'name' in action and action['name'] == 'Spin up Environment':
+                        if 'name' in action and action['name'] and 'spin up environment' in action['name'].lower():
                             if verbose:
                                 print('Found "Spin up Environment" job')
                             found_spin_up_env_action = True
