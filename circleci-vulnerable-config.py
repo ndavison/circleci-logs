@@ -13,6 +13,7 @@ parser = ArgumentParser(description="Checks a CircleCI project for signs of vuln
 parser.add_argument("-p", "--project", help="project to request circleci build logs for, in the format of project/repo")
 parser.add_argument("-c", "--circleci-token", help="The CircleCI API token for non public readable builds")
 parser.add_argument("-g", "--github-token", help="The Github API token")
+parser.add_argument("-i", "--ignore-users", help="Ignore specific Github users from the forked PR collection, comma separated")
 parser.add_argument("-a", "--check-all", action="store_true", help="Go through all found CircleCI builds even if secret usage was already found")
 parser.add_argument("-v", "--verbose", action="store_true", help="More output")
 
@@ -26,6 +27,7 @@ project = args.project.split('/')[0]
 repo = args.project.split('/')[1]
 token = args.circleci_token
 github_token = args.github_token
+ignore_users = args.ignore_users
 check_all_circleci_builds = args.check_all
 verbose = args.verbose
 
@@ -45,6 +47,11 @@ while True:
     data = res.json()
     if len(data) > 0:
         for pr in data:
+            pr_user = pr['user']['login'] if 'user' in pr and 'login' in pr['user'] else ''
+            if pr_user and ignore_users and pr_user in ignore_users.split(','):
+                if verbose:
+                    print('Ignoring PR from %s' % (pr_user))
+                continue
             if (
                 pr and 'head' in pr and pr['head'] and 'repo' in pr['head'] and pr['head']['repo'] and 'sha' in pr['head'] and
                 'fork' in pr['head']['repo'] and pr['head']['repo']['fork']
