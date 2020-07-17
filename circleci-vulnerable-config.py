@@ -130,7 +130,7 @@ def get_build_secret_names(build_num):
                 'PR user is not the same as build user (Github PR: %s, CircleCI build: %s - this could indicate a privileged user/bot ran the build' %
                 (forked_builds_user_map[build_num], build_details['user']['login'])
             )
-    if 'branch' in build_details and 'pull' not in build_details['branch'].lower():
+    if 'branch' in build_details and build_details['branch'] and 'pull' not in build_details['branch'].lower():
         raise GetBuildSecretsException('This build was not a pull request branch, possibly caused by a merge and not by opening a PR')
     if 'steps' in build_details:
         for job, step in enumerate(build_details['steps']):
