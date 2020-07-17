@@ -1,6 +1,6 @@
 import requests
+import pendulum
 import json
-import os
 import re
 from argparse import ArgumentParser
 
@@ -63,7 +63,8 @@ while True:
                     {
                         'sha': pr['head']['sha'],
                         'number': pr['number'],
-                        'user': pr['user']['login'] if 'user' in pr and 'login' in pr['user'] else ''
+                        'user': pr['user']['login'] if 'user' in pr and 'login' in pr['user'] else '',
+                        'merged_at': pr['merged_at'] if 'merged_at' in pr else None
                     }
                 )
                 if verbose:
@@ -99,6 +100,13 @@ for pr in gh_prs:
                 if build_num_matches:
                     build_num = int(build_num_matches.group(1))
                     if build_num not in forked_builds:
+                        if (
+                            pr['merged_at'] and 'created_at' in status and status['created_at'] and
+                            pendulum.parse(pr['merged_at']) < pendulum.parse(status['created_at'])
+                        ):
+                            if verbose:
+                                print('CircleCI build %s was created after the PR was merged' % (build_num))
+                            continue
                         forked_builds.append(build_num)
                         # record the PR user, accoding to Github, for this CircleCI build number, for later comparison
                         forked_builds_user_map[build_num] = pr['user']
