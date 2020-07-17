@@ -11,6 +11,7 @@ CircleCI log and security configuration automations.
 You will need `requests` and 'pendulum' e.g.:
 
 `pip install requests`
+
 `pip install pendulum`
 
 The `circleci-logs.py` scripts writes the log output to `./out/circleci/ORG/REPO/BUILD_NUM`.
