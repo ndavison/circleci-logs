@@ -107,6 +107,10 @@ for pr in gh_prs:
                             if verbose:
                                 print('CircleCI build %s was created after the PR was merged' % (build_num))
                             continue
+                        if 'state' in status and status['state'] == 'pending':
+                            if verbose:
+                                print('CircleCI build %s is pending - try again soon for this build to be checked' % (build_num))
+                            continue
                         forked_builds.append(build_num)
                         # record the PR user, accoding to Github, for this CircleCI build number, for later comparison
                         forked_builds_user_map[build_num] = pr['user']
