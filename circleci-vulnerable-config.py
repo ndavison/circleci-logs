@@ -10,11 +10,12 @@ class GetBuildSecretsException(Exception):
 
 
 parser = ArgumentParser(description="Checks a CircleCI project for signs of vulnerable configuration in regards to fork behaviour and secrets")
-parser.add_argument("-p", "--project", help="project to request circleci build logs for, in the format of project/repo")
+parser.add_argument("-p", "--project", help="The repo/project to inspect, in the format of org/repo")
 parser.add_argument("-c", "--circleci-token", help="The CircleCI API token for non public readable builds")
 parser.add_argument("-g", "--github-token", help="The Github API token")
 parser.add_argument("-i", "--ignore-users", help="Ignore specific Github users from the forked PR collection, comma separated")
 parser.add_argument("-a", "--check-all", action="store_true", help="Go through all found CircleCI builds even if secret usage was already found")
+parser.add_argument("-o", "--open-only", action="store_true", help="Only check currently open PRs")
 parser.add_argument("-v", "--verbose", action="store_true", help="More output")
 
 args = parser.parse_args()
@@ -29,6 +30,7 @@ token = args.circleci_token
 github_token = args.github_token
 ignore_users = args.ignore_users
 check_all_circleci_builds = args.check_all
+open_only = args.open_only
 verbose = args.verbose
 
 print('Trying %s/%s...' % (project, repo))
@@ -40,7 +42,13 @@ if github_token:
     gh_headers['Authorization'] = 'token %s' % (github_token)
 page = 1
 gh_prs = []
+if open_only and verbose:
+    print('Collecting PRs that are open only')
 while True:
+    if page > 20:
+        if verbose:
+            print('Stopping PR collection after checking 20 pages of PRs')
+        break
     if verbose:
         print("Getting page %s for %s/%s PRs..." % (page, project, repo))
     res = s_github.get('https://api.github.com/repos/%s/%s/pulls' % (project, repo), headers=gh_headers, params={'page': page, 'state': 'all' })
@@ -52,18 +60,23 @@ while True:
                 if verbose:
                     print('Ignoring PR from %s' % (pr_user))
                 continue
+            if open_only and 'state' in pr and pr['state'] != 'open':
+                continue
             if (
                 pr and 'head' in pr and pr['head'] and 'repo' in pr['head'] and pr['head']['repo'] and 'sha' in pr['head'] and
                 'fork' in pr['head']['repo'] and pr['head']['repo']['fork']
             ):
                 # if the PR author is publicly known as a privileged user for this repo, skip
                 if pr['author_association'] in ['OWNER', 'MEMBER']:
+                    if verbose:
+                        print('Ignoring PR %s, author "%s" is a %s' % (pr['number'], pr_user, pr['author_association']))
                     continue
                 gh_prs.append(
                     {
                         'sha': pr['head']['sha'],
                         'number': pr['number'],
-                        'user': pr['user']['login'] if 'user' in pr and 'login' in pr['user'] else '',
+                        'user': pr_user,
+                        'created_at': pr['created_at'] if 'created_at' in pr else None,
                         'merged_at': pr['merged_at'] if 'merged_at' in pr else None
                     }
                 )
@@ -100,16 +113,21 @@ for pr in gh_prs:
                 if build_num_matches:
                     build_num = int(build_num_matches.group(1))
                     if build_num not in forked_builds:
+                        # if the PR is merged, check the time of the CircleCI build to make sure it isn't aligned with the merge
                         if (
                             pr['merged_at'] and 'created_at' in status and status['created_at'] and
-                            pendulum.parse(pr['merged_at']) < pendulum.parse(status['created_at'])
+                            pendulum.parse(status['created_at']) > pendulum.parse(pr['created_at']).add(hours=1) and
+                            (
+                                pendulum.parse(status['created_at']) > pendulum.parse(pr['merged_at']) or
+                                pendulum.parse(status['created_at']).add(hours=1) > pendulum.parse(pr['merged_at'])
+                            )
                         ):
                             if verbose:
-                                print('CircleCI build %s was created after the PR was merged' % (build_num))
+                                print('Skipping CircleCI build %s as it appears to have run on merge and not PR creation' % (build_num))
                             continue
                         if 'state' in status and status['state'] == 'pending':
                             if verbose:
-                                print('CircleCI build %s is pending - try again soon for this build to be checked' % (build_num))
+                                print('Skipping CircleCI build %s due to being "pending" - try again soon for this build to be checked' % (build_num))
                             continue
                         forked_builds.append(build_num)
                         # record the PR user, accoding to Github, for this CircleCI build number, for later comparison
