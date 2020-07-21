@@ -113,13 +113,17 @@ for pr in gh_prs:
                 if build_num_matches:
                     build_num = int(build_num_matches.group(1))
                     if build_num not in forked_builds:
+                        pr_create_time = pendulum.parse(pr['created_at'])
+                        pr_merge_time = pendulum.parse(pr['merged_at']) if 'merged_at' in pr and pr['merged_at'] else None
+                        status_create_time = pendulum.parse(status['created_at']) if 'created_at' in status and status['created_at'] else None
                         # if the PR is merged, check the time of the CircleCI build to make sure it isn't aligned with the merge
                         if (
-                            pr['merged_at'] and 'created_at' in status and status['created_at'] and
-                            pendulum.parse(status['created_at']) > pendulum.parse(pr['created_at']).add(hours=1) and
+                            pr_merge_time and
+                            status_create_time and
+                            status_create_time > pr_create_time.add(hours=1) and
                             (
-                                pendulum.parse(status['created_at']) > pendulum.parse(pr['merged_at']) or
-                                pendulum.parse(status['created_at']).add(hours=1) > pendulum.parse(pr['merged_at'])
+                                status_create_time > pr_merge_time or
+                                status_create_time.add(hours=1) > pr_merge_time
                             )
                         ):
                             if verbose:
@@ -134,6 +138,10 @@ for pr in gh_prs:
                         forked_builds_user_map[build_num] = pr['user']
                         if verbose:
                             print('Found CircleCI build %s from PR %s (commit %s)' % (build_num, pr['number'], pr['sha']))
+                            print(
+                                '\tSeconds between PR %s creation and CircleCI job %s creation: %s' %
+                                (pr['number'], build_num, status_create_time.int_timestamp - pr_create_time.int_timestamp)
+                            )
 
 if len(forked_builds) == 0:
     print('%s/%s: No CircleCI statuses found - unlikely to be vulnerable' % (project, repo))
