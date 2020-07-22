@@ -42,7 +42,7 @@ if github_token:
     gh_headers['Authorization'] = 'token %s' % (github_token)
 page = 1
 gh_prs = []
-gh_pr_state = 'open' in open_only else 'all'
+gh_pr_state = 'open' if open_only else 'all'
 if open_only and verbose:
     print('Collecting PRs that are open only')
 while True:
