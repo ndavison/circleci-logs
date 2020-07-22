@@ -42,6 +42,7 @@ if github_token:
     gh_headers['Authorization'] = 'token %s' % (github_token)
 page = 1
 gh_prs = []
+gh_pr_state = 'open' in open_only else 'all'
 if open_only and verbose:
     print('Collecting PRs that are open only')
 while True:
@@ -51,7 +52,7 @@ while True:
         break
     if verbose:
         print("Getting page %s for %s/%s PRs..." % (page, project, repo))
-    res = s_github.get('https://api.github.com/repos/%s/%s/pulls' % (project, repo), headers=gh_headers, params={'page': page, 'state': 'all' })
+    res = s_github.get('https://api.github.com/repos/%s/%s/pulls' % (project, repo), headers=gh_headers, params={'page': page, 'state': gh_pr_state })
     data = res.json()
     if len(data) > 0:
         for pr in data:
@@ -59,8 +60,6 @@ while True:
             if pr_user and ignore_users and pr_user in ignore_users.split(','):
                 if verbose:
                     print('Ignoring PR from %s' % (pr_user))
-                continue
-            if open_only and 'state' in pr and pr['state'] != 'open':
                 continue
             if (
                 pr and 'head' in pr and pr['head'] and 'repo' in pr['head'] and pr['head']['repo'] and 'sha' in pr['head'] and
