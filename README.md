@@ -5,7 +5,7 @@ CircleCI log and security configuration automations.
 
 `circleci-repos.py` - Checks a Github org for repos, or members of the org with personal repos, which have projects on CircleCI.
 
-`circleci-vulnerable-config.py` - Checks a CircleCI project for signs of vulnerable configuration in regards to fork behaviour and secrets.
+`circleci-vulnerable-config.py` - Checks a CircleCI project for signs of vulnerable configuration in regards to fork behaviour and secrets. More info on this can be found here: https://nathandavison.com/blog/shaking-secrets-out-of-circleci-builds
 
 ## Usage
 You will need `requests` and `pendulum` e.g.:
